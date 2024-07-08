@@ -10,14 +10,15 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     target = []
     pred_list = []
     output=[]
-
+    hash_codes = []
+    
     ap_meter=AveragePrecisionMeter()
     for i, (X, y) in enumerate(loader):
         # Pass to gpu or cpu
         X, y = X.cuda().float(), y.cuda().float()
 
         with torch.no_grad():
-            out_1, _ = net(X)
+            out_1, _, hash_code = net(X)
           
             ap_meter.add(out_1.cpu().detach(), y.cpu())
             
@@ -36,6 +37,7 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
             pred_list.append((out>0.5).cpu().detach().numpy())
             output.append(out.cpu().detach().numpy())
             target.append(y.cpu().detach().numpy())
+            hash_codes.append(hash_code.cpu().detach().numpy())
             
 
         # Calculate stats
@@ -44,6 +46,7 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     target = np.concatenate(target)
     output = np.concatenate(output)
     preds = np.concatenate(pred_list) 
+    hash_codes = np.concatenate(hash_codes)
     
     learn_loss=running_loss / len(loader)
 
@@ -62,9 +65,9 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     #OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)    
 
     if(return_map):
-        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1)
+        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1),hash_codes
     else:
-        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc
+        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc,hash_codes
     
 def compute_cover(labels, outputs):
     n_labels = labels.shape[1]

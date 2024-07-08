@@ -70,7 +70,7 @@ class DynamicGraphConvolution(nn.Module):
 
 
 class ADD_GCN(nn.Module):
-    def __init__(self, model, num_classes):
+    def __init__(self, model, num_classes, hash_code_length=64):
         super(ADD_GCN, self).__init__()
         # 包含了 ResNet-50 的卷积层和残差块，用于特征提取
         self.features = nn.Sequential(
@@ -95,6 +95,11 @@ class ADD_GCN(nn.Module):
         self.mask_mat = nn.Parameter(torch.eye(self.num_classes).float())
         self.last_linear = nn.Conv1d(1024, self.num_classes, 1)
 
+        ### 哈希层
+        self.hash_layer = nn.Linear(1024, hash_code_length, bias=False)
+        self.hash_code_length = hash_code_length
+        self.hash_sign = nn.Tanh()
+        self.hash_layer.weight.data.normal_(0,0.01)
         # image normalization
         
     # 使用 ResNet 的特征提取层进行特征提取
@@ -148,7 +153,12 @@ class ADD_GCN(nn.Module):
         out2 = self.last_linear(z) # B*1*num_classes
         mask_mat = self.mask_mat.detach()
         out2 = (out2 * mask_mat).sum(-1)
-        return (out1 + out2) / 2, dag
+        
+        # 生成哈希码
+        hash_code = self.hash_layer(v)  # 生成哈希码
+        hash_code = self.hash_sign(hash_code)
+        
+        return (out1 + out2) / 2, dag, hash_code
 
 
     def get_config_optim(self, lr, lrp):

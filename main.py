@@ -181,18 +181,18 @@ def accuracy(logit, target, topk=(1,)):
 
 def train_one_step(net, data, label, optimizer, criterion):
     net.train()
-    pred, _ = net(data)
+    pred,label_dependency, hash_code = net(data)
     loss = criterion(torch.sigmoid(pred), label)
     loss.backward()
     nn.utils.clip_grad_norm_(net.parameters(), max_norm=10.0)
     optimizer.step()
     optimizer.zero_grad()
 
-    return loss
+    return loss, hash_code
 
 def train_one_step_correction(net, data, labels, optimizer, criterion, delta, beta):
     net.train()
-    pred, label_dependency = net(data)
+    pred, label_dependency, hash_code= net(data)
     pred = torch.sigmoid(pred)
     corrected_labels_batch = torch.zeros((labels.size(0), labels.size(1)))
 
@@ -216,42 +216,47 @@ def train_one_step_correction(net, data, labels, optimizer, criterion, delta, be
     optimizer.step()
     optimizer.zero_grad()
     
-    return loss, corrected_labels_batch
+    return loss, corrected_labels_batch, hash_code
 
 def train(model, train_loader, optimizer1):
     model.train()
     train_total = 0
     train_loss = 0.
     orginal = []
+    hash_codes = []
+    
     for i, (data, labels) in enumerate(train_loader):
         data = data.cuda()
         labels = labels.cuda()
         orginal.append(labels)
         # Forward + Backward + Optimize
         train_total += 1
-        loss = train_one_step(model, data.float(), labels.float(), optimizer1, nn.BCELoss())
+        loss, hash_code = train_one_step(model, data.float(), labels.float(), optimizer1, nn.BCELoss())
         train_loss += loss
+        hash_codes.append(hash_code.detach().cpu().numpy())
     train_loss_ = train_loss  / float(train_total)
 
-    return train_loss_, orginal
+    return train_loss_, orginal, hash_codes
 
 def train_after_correction(model, train_loader, new_labels, optimizer1, delta, beta):
     model.train()
     train_total = 0
     train_loss = 0.
     corrected_labels = []
+    hash_codes = []
     for i, (data, labels) in enumerate(train_loader):
         data = data.cuda()
         labels = new_labels[i].cuda()
         
         # Forward + Backward + Optimize
         train_total += 1
-        loss, corrected_labels_batch = train_one_step_correction(model, data.float(), labels.float(), optimizer1, nn.BCELoss(), delta, beta)
+        loss, corrected_labels_batch, hash_code = train_one_step_correction(model, data.float(), labels.float(), optimizer1, nn.BCELoss(), delta, beta)
         train_loss += loss
         corrected_labels.append(corrected_labels_batch)
+        hash_codes.append(hash_code.detach().cpu().numpy())
     train_loss_ = train_loss  / float(train_total)
 
-    return train_loss_, corrected_labels
+    return train_loss_, corrected_labels, hash_codes
 
 def label_dependency_capture(label_dependency, labels):
     posterior_pro_y_y = 0.
@@ -332,15 +337,15 @@ def main(args):
         print(delta)
         print('Training...')
         if epoch < args.epoch_update_start:
-            train_loss, corrected_labels = train(clf1, train_loader, optimizer1)  
+            train_loss, corrected_labels, train_hash_codes = train(clf1, train_loader, optimizer1)  
         else:
-            train_loss, corrected_labels = train_after_correction(clf1, train_loader, corrected_labels, optimizer1, delta, args.beta)
+            train_loss, corrected_labels, train_hash_codes = train_after_correction(clf1, train_loader, corrected_labels, optimizer1, delta, args.beta)
         
-        val_1, val_2 = test(clf1, val_loader, return_map=True)
+        val_1, val_2, val_hash_codes = test(clf1, val_loader, return_map=True)
         val_loss, v_hloss, v_rloss, cover, avgpre, oneerror, acc = val_1
         map, OP, OR, OF1, CP, CR, CF1 = val_2
         
-        test_1, test_2 = test(clf1, test_loader, return_map=True)
+        test_1, test_2, test_hash_codes = test(clf1, test_loader, return_map=True)
         
         val_loss_, v_hloss_, v_rloss_, cover_, avgpre_, oneerror_, acc_ = test_1
         map_, OP_, OR_, OF1_, CP_, CR_, CF1_ = test_2
