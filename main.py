@@ -342,19 +342,21 @@ def main(args):
         else:
             train_loss, corrected_labels, train_hash_codes = train_after_correction(clf1, train_loader, corrected_labels, optimizer1, delta, args.beta)
         
-        val_1, val_2, val_hash_codes = test(clf1, val_loader, return_map=True)
+        val_1, val_2, val_hash_map = test(clf1, val_loader, return_map=True)
         val_loss, v_hloss, v_rloss, cover, avgpre, oneerror, acc = val_1
         map, OP, OR, OF1, CP, CR, CF1 = val_2
         
-        test_1, test_2, test_hash_codes = test(clf1, test_loader, return_map=True)
+        test_1, test_2, test_hash_map = test(clf1, test_loader, return_map=True)
         
         val_loss_, v_hloss_, v_rloss_, cover_, avgpre_, oneerror_, acc_ = test_1
         map_, OP_, OR_, OF1_, CP_, CR_, CF1_ = test_2
         
         print('Epoch', epoch, 'val_loss, hloss, rloss, cover, oneerror, avgpre, acc', round(val_loss, 5), round(v_hloss, 5), round(v_rloss, 5), round(cover, 5), round(oneerror, 5), round(avgpre, 5), round(acc, 5))
         print('Epoch', epoch, 'val_map, OP, OR, OF1, CP, CR, CF1', round(map, 5), round(OP, 5), round(OR, 5), round(OF1, 5), round(CP, 5), round(CR, 5), round(CF1, 5))
+        print('Epoch', epoch, 'val_hash_map', round(val_hash_map, 5)) 
         print('Epoch', epoch, 'test_loss, hloss, rloss, cover, oneerror, avgpre, acc', round(val_loss_, 5), round(v_hloss_, 5), round(v_rloss_, 5), round(cover_, 5), round(oneerror_, 5),round(avgpre_, 5),round(acc_, 5))
         print('Epoch', epoch, 'test_map, OP, OR, OF1, CP, CR, CF1', round(map_, 5), round(OP_, 5), round(OR_, 5), round(OF1_, 5), round(CP_, 5),round(CR_, 5),round(CF1_, 5))  
+        print('Epoch', epoch, 'test_hash_map', round(test_hash_map, 5))  
         
     
     

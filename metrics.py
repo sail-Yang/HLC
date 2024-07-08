@@ -2,6 +2,7 @@ from sklearn.metrics import hamming_loss, label_ranking_loss, coverage_error, la
 import numpy as np
 import torch
 import math
+from sklearn.metrics import average_precision_score
 
 def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     running_loss = 0
@@ -46,7 +47,21 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     target = np.concatenate(target)
     output = np.concatenate(output)
     preds = np.concatenate(pred_list) 
+    # 计算hash mAp
     hash_codes = np.concatenate(hash_codes)
+    hamming_distances = np.sum(hash_codes[:, None, :] != hash_codes[None, :, :], axis=2)
+    
+    num_samples = len(hash_codes)
+    hash_map = 0
+    for i in range(num_samples):
+        distances = hamming_distances[i]
+        sorted_indices = np.argsort(distances)
+        sorted_labels = target[sorted_indices]
+        
+        ap = average_precision_score(target[i], sorted_labels)
+        hash_map += ap
+    
+    hash_map /= num_samples
     
     learn_loss=running_loss / len(loader)
 
@@ -65,9 +80,9 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     #OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)    
 
     if(return_map):
-        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1),hash_codes
+        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1),hash_map
     else:
-        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc,hash_codes
+        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc,hash_codes, hash_map
     
 def compute_cover(labels, outputs):
     n_labels = labels.shape[1]
