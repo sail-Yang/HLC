@@ -1,19 +1,8 @@
 import os
 from turtle import pos
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
-import torchvision.transforms as transforms
-from torch.optim.lr_scheduler import MultiStepLR
-import torch.backends.cudnn as cudnn
-import torchvision.models as tv_models
-from torch.cuda.amp import GradScaler, autocast
-import torch.optim as optim
 import argparse, sys
 import numpy as np
 import datetime
-
 from metrics import test
 from voc import *
 from coco import *
@@ -52,9 +41,21 @@ parser.add_argument('--delta', type=float, help='hyper-parameter', default=0.4)
 parser.add_argument('--image_size', type=int, help='image_size', default=224)
 args = parser.parse_args()
 
-
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 print(args)
+
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+import torchvision.transforms as transforms
+from torch.optim.lr_scheduler import MultiStepLR
+import torch.backends.cudnn as cudnn
+import torchvision.models as tv_models
+from torch.cuda.amp import GradScaler, autocast
+import torch.optim as optim
+
 # Seed
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)

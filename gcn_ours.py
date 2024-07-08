@@ -96,7 +96,7 @@ class ADD_GCN(nn.Module):
         self.last_linear = nn.Conv1d(1024, self.num_classes, 1)
 
         ### 哈希层
-        self.hash_layer = nn.Linear(1024, hash_code_length, bias=False)
+        self.hash_layer = nn.Linear(20, hash_code_length, bias=False)
         self.hash_code_length = hash_code_length
         self.hash_sign = nn.Tanh()
         self.hash_layer.weight.data.normal_(0,0.01)
