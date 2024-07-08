@@ -47,22 +47,10 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     target = np.concatenate(target)
     output = np.concatenate(output)
     preds = np.concatenate(pred_list) 
-    # 计算hash mAp
     hash_codes = np.concatenate(hash_codes)
-    hamming_distances = np.sum(hash_codes[:, None, :] != hash_codes[None, :, :], axis=2)
-    
-    num_samples = len(hash_codes)
-    hash_map = 0
-    for i in range(num_samples):
-        distances = hamming_distances[i]
-        sorted_indices = np.argsort(distances)
-        sorted_labels = target[sorted_indices]
-        
-        ap = average_precision_score(target[i], sorted_labels)
-        hash_map += ap
-    
-    hash_map /= num_samples
-    
+    # 计算hash mAp
+    hash_mAP = compute_hash_map(hash_codes, target, 64)
+    print("hash mAP:", hash_mAP)
     learn_loss=running_loss / len(loader)
 
     hloss = hamming_loss(target,preds)
@@ -80,9 +68,9 @@ def test(net, loader, criterion=torch.nn.BCELoss(), return_map=False):
     #OP_k, OR_k, OF1_k, CP_k, CR_k, CF1_k = ap_meter.overall_topk(3)    
 
     if(return_map):
-        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1),hash_map
+        return (learn_loss, hloss, rloss, cover, avgpre, oneerror, acc),(map, OP, OR, OF1, CP, CR, CF1)
     else:
-        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc,hash_codes, hash_map
+        return learn_loss, hloss, rloss, cover, avgpre, oneerror, acc,hash_codes
     
 def compute_cover(labels, outputs):
     n_labels = labels.shape[1]
@@ -243,3 +231,24 @@ class AveragePrecisionMeter(object):
         CR = np.sum(Nc / Ng) / n_class
         CF1 = (2 * CP * CR) / (CP + CR)
         return OP * 100, OR * 100, OF1 * 100, CP * 100, CR * 100, CF1 * 100
+def compute_hash_map(hash_codes, targets, hash_code_length):
+    """
+    计算哈希码的 mAP（mean Average Precision）
+    
+    Args:
+        hash_codes (np.array): 形状为 (N, hash_code_length) 的哈希码
+        targets (np.array): 形状为 (N, num_classes) 的目标标签
+        hash_code_length (int): 哈希码的长度
+
+    Returns:
+        mAP (float): 计算得到的 mAP 值
+    """
+    # 将哈希码转换为二进制形式
+    hash_codes = (hash_codes > 0).astype(np.float)
+    mAP_list = []
+    for i in range(targets.shape[1]):
+        ap = average_precision_score(targets[:, i], hash_codes[:, i])
+        mAP_list.append(ap)
+    
+    mAP = np.mean(mAP_list)
+    return mAP
